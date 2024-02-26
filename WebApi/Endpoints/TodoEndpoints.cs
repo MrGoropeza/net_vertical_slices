@@ -1,20 +1,23 @@
 using WebApi.Application.Todos;
+using WebApi.Endpoints.Abstractions;
 using WebApi.Endpoints.Filters;
 
 namespace WebApi.Endpoints;
 
-public static class TodoEndpoints
+public class TodoEndpoints : IEndpoint
 {
-    public static void MapTodoEndpoints(this IEndpointRouteBuilder app)
+    public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/todos").WithTags("Todos");
+        var group = app.MapGroup("/todos").WithTags("Todos").WithOpenApi();
 
-        group.MapGet("", ListTodos.Endpoint).WithName(nameof(ListTodos)).WithOpenApi();
+        group
+            .MapGet("", ListTodos.Endpoint)
+            .WithName(nameof(ListTodos))
+            .AddEndpointFilter<ValidationFilter<ListTodos.Query>>();
 
         group
             .MapPost("", CreateTodo.Endpoint)
             .WithName(nameof(CreateTodo))
-            .WithOpenApi()
             .AddEndpointFilter<ValidationFilter<CreateTodo.Command>>();
     }
 }
