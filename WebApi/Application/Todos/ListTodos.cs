@@ -1,7 +1,9 @@
-using System.Linq.Dynamic.Core;
 using FluentValidation;
 using MediatR;
 using WebApi.Application.DTOs;
+using WebApi.Endpoints;
+using WebApi.Endpoints.Abstractions;
+using WebApi.Endpoints.Filters;
 using WebApi.Endpoints.Swagger;
 using WebApi.Models;
 
@@ -9,13 +11,7 @@ namespace WebApi.Application.Todos;
 
 public static class ListTodos
 {
-    public record Response : ListResponse<Todo>
-    {
-        public Response(ListResponse<Todo> original)
-            : base(original) { }
-    }
-
-    public record Query() : ListQuery(), IRequest<Response>
+    public record Query() : ListQuery(), IRequest<ListResponse<Todo>>
     {
         [SortProperties(typeof(Todo))]
         public new string[]? SortBy
@@ -25,6 +21,25 @@ public static class ListTodos
         }
     };
 
+    public class Endpoint : IEndpoint
+    {
+        public void MapEndpoint(IEndpointRouteBuilder app) =>
+            app.MapGet("todos", EndpointHandler)
+                .WithName(nameof(ListTodos))
+                .WithSummary("List Todos")
+                .WithDescription("List Todos with pagination & multi-sorting")
+                .WithTags(Tags.Todos)
+                .WithOpenApi()
+                .AddEndpointFilter<ValidationFilter<Query>>();
+
+        private async Task<IResult> EndpointHandler(ISender sender, [AsParameters] Query query)
+        {
+            var response = await sender.Send(query);
+
+            return Results.Ok(response);
+        }
+    }
+
     public class Validator : AbstractValidator<Query>
     {
         public Validator()
@@ -33,41 +48,45 @@ public static class ListTodos
                 .GreaterThanOrEqualTo(1)
                 .WithErrorCode("InvalidPage")
                 .WithMessage("Page cannot be less than 1.");
+
             RuleFor(x => x.PageSize)
                 .GreaterThanOrEqualTo(0)
                 .WithErrorCode("InvalidPageSize")
                 .WithMessage("PageSize cannot be less than 0.");
+
             RuleFor(x => x.SortBy)
                 .Must(
                     x =>
                         x is null
-                        || x.All(
-                            property =>
-                                typeof(Todo).GetProperty(property.Replace("-", "").Replace("+", ""))
-                                    is not null
-                        )
+                        || x.Select(sort => sort.Replace("-", "").Replace("+", ""))
+                            .Distinct()
+                            .Count() == x.Length
                 )
-                .WithErrorCode("InvalidSortsBy")
-                .WithMessage("Sorts are invalid.");
+                .WithErrorCode("InvalidSortBy")
+                .WithMessage("Cannot sort by duplicate properties.");
+
+            RuleForEach(x => x.SortBy)
+                .Must(
+                    sort =>
+                        typeof(Todo).GetProperty(sort.Replace("-", "").Replace("+", "")) is not null
+                )
+                .WithErrorCode("InvalidSortBy")
+                .WithMessage("Sort '{PropertyValue}' is invalid.");
         }
     }
 
-    public static async Task<IResult> Endpoint(ISender sender, [AsParameters] Query query)
-    {
-        var response = await sender.Send(query);
-
-        return Results.Ok(response);
-    }
-
-    public class Handler(TodoRepository todoRepository) : IRequestHandler<Query, Response>
+    public class Handler(TodoRepository todoRepository) : IRequestHandler<Query, ListResponse<Todo>>
     {
         private readonly TodoRepository _todoRepository = todoRepository;
 
-        public async Task<Response> Handle(Query request, CancellationToken cancellationToken)
+        public async Task<ListResponse<Todo>> Handle(
+            Query request,
+            CancellationToken cancellationToken
+        )
         {
             var todos = await _todoRepository.Matching(request, cancellationToken);
 
-            return new Response(todos);
+            return todos;
         }
     }
 }

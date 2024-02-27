@@ -15,6 +15,7 @@ public static class ConfigureInfrastructure
         services.AddDbContext<AppDbContext>(
             opt => opt.UseNpgsql(connectionString).UseSnakeCaseNamingConvention()
         );
+
         return services;
     }
 }

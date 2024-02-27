@@ -32,7 +32,7 @@ public static class ConfigureEndpoints
         return services;
     }
 
-    public static IApplicationBuilder MapEndpoints(
+    public static IApplicationBuilder UseEndpoints(
         this WebApplication app,
         RouteGroupBuilder? routeGroupBuilder = null
     )
@@ -44,6 +44,12 @@ public static class ConfigureEndpoints
         foreach (IEndpoint endpoint in endpoints)
         {
             endpoint.MapEndpoint(builder);
+        }
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
         return app;
