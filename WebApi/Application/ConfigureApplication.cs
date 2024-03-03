@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using WebApi.Application.MessageQueue;
 using WebApi.Application.Todos;
 
 namespace WebApi.Application;
@@ -26,8 +27,26 @@ public static class ConfigureApplication
         // services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         // services.TryAddEnumerable(serviceDescriptors);
 
+        // add repositorys
         services.TryAddScoped<TodoRepository>();
 
+        // add websocket services
+        services.TryAddTransient<WebsocketMiddleware>();
+        services.TryAddSingleton<WebsocketConnections>();
+
+        // add message queue
+        services.AddSingleton<InMemoryMessageQueue>();
+        services.AddHostedService<WebsocketsBackgroundService>();
+
         return services;
+    }
+
+    public static IApplicationBuilder UseApplication(this WebApplication app)
+    {
+        app.UseWebSockets();
+
+        app.UseMiddleware<WebsocketMiddleware>();
+
+        return app;
     }
 }
