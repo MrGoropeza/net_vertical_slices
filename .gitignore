@@ -18,6 +18,7 @@
 
 # Mono auto generated files
 mono_crash.*
+.mono/*
 
 # Build results
 [Dd]ebug/
@@ -482,3 +483,4 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
