@@ -1,7 +1,8 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using WebApi.Application.MessageQueue;
 using WebApi.Application.Todos;
+using WebApi.Application.Topics;
+using WebApi.Application.Topics.Websockets;
 
 namespace WebApi.Application;
 
@@ -30,13 +31,17 @@ public static class ConfigureApplication
         // add repositorys
         services.TryAddScoped<TodoRepository>();
 
-        // add websocket services
-        services.TryAddTransient<WebsocketMiddleware>();
-        services.TryAddSingleton<WebsocketConnections>();
+        // // add websocket services
+        // services.TryAddTransient<WebsocketMiddleware>();
+        // services.TryAddSingleton<WebsocketConnections>();
 
-        // add message queue
-        services.AddSingleton<InMemoryMessageQueue>();
-        services.AddHostedService<WebsocketsBackgroundService>();
+        // // add message queue
+        // services.AddSingleton<InMemoryMessageQueue>();
+        // services.AddHostedService<WebsocketsBackgroundService>();
+
+        // add Topics Services
+        services.TryAddTransient<WebsocketRealtimeMiddleware>();
+        services.TryAddSingleton<RealtimeManager>();
 
         return services;
     }
@@ -45,7 +50,8 @@ public static class ConfigureApplication
     {
         app.UseWebSockets();
 
-        app.UseMiddleware<WebsocketMiddleware>();
+        // app.UseMiddleware<WebsocketMiddleware>();
+        app.UseMiddleware<WebsocketRealtimeMiddleware>();
 
         return app;
     }
